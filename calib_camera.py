@@ -80,5 +80,3 @@ def getCalibData(visualize=False):
     objpoints, imgpoints = getObjImgPoints(visualize)
     ret, mtx, dist, rvecs, tvecs = calibCamera(objpoints, imgpoints, visualize) 
     return mtx, dist
-
-getCalibData(False)
