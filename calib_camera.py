@@ -9,6 +9,7 @@ import numpy as np
 import glob
 import matplotlib.pyplot as plt
 import os
+import pickle
 
 def getObjImgPoints(visualize=True):
     # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,9,0)
@@ -73,10 +74,16 @@ def calibCamera(objpoints, imgpoints, visualize=False):
     return ret, mtx, dist, rvecs, tvecs
 
 
-def getCalibData(visualize=False):
-    objpoints = []
-    imgpoints = []
-    
-    objpoints, imgpoints = getObjImgPoints(visualize)
-    ret, mtx, dist, rvecs, tvecs = calibCamera(objpoints, imgpoints, visualize) 
-    return mtx, dist
+
+objpoints = []
+imgpoints = []
+visualize = True
+objpoints, imgpoints = getObjImgPoints(visualize)
+ret, mtx, dist, rvecs, tvecs = calibCamera(objpoints, imgpoints, visualize)
+
+
+# Save the camera calibration result for later use (we won't worry about rvecs / tvecs)
+cam_pickle = {}
+cam_pickle["mtx"] = mtx
+cam_pickle["dist"] = dist
+pickle.dump( cam_pickle, open( "cam_pickle.p", "wb" ) )
