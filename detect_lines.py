@@ -369,7 +369,7 @@ def find_next_lanes(img, left_fit, right_fit, visualize=False):
     
     return left_fit, right_fit, ploty
 
-def calc_curvature(left_fit, right_fit, ploty):
+def calc_curvature_offset(left_fit, right_fit, ploty):
     
     # Define y-value where we want radius of curvature
     # I'll choose the maximum y-value, corresponding to the bottom of the image
@@ -388,16 +388,29 @@ def calc_curvature(left_fit, right_fit, ploty):
     right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
     left_fit_cr = np.polyfit(ploty*ym_per_pix, left_fitx*xm_per_pix, 2)
     right_fit_cr = np.polyfit(ploty*ym_per_pix, right_fitx*xm_per_pix, 2)
+    
+    #print("Min: "+str(np.min(right_fitx)*xm_per_pix))
+    #print("Max: "+str(np.max(right_fitx)*xm_per_pix))
     # Calculate the new radii of curvature
     left_curverad_m = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
     right_curverad_m = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
     # Now our radius of curvature is in meters
-    #print(left_curverad_m, 'm', right_curverad_m, 'm')
-    return left_curverad_m, right_curverad_m
+
+    curve_mean = ((left_curverad_m + right_curverad_m) / 2)
+        
+    img_width = 1280
+    center_img_m = (img_width/2 + 0.5) * xm_per_pix
+    
+    left_lane_m = np.max(left_fitx)* xm_per_pix
+    right_lane_m = np.max(right_fitx)*xm_per_pix
+    lane_midpt   = (left_lane_m + right_lane_m) / 2
+    veh_pos_rel_center = lane_midpt - center_img_m
+
+    return curve_mean, veh_pos_rel_center
 
 
 
-def draw_result_raw_image(img, binary_img, M, left_fit, right_fit, ploty, left_curverad_m, right_curverad_m):
+def draw_result_raw_image(img, binary_img, M, left_fit, right_fit, ploty, mean_curve_m, lat_off_rel_ctr, visualize=False):
     
     Minv = np.linalg.inv(M)
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
@@ -421,20 +434,16 @@ def draw_result_raw_image(img, binary_img, M, left_fit, right_fit, ploty, left_c
     result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
     # Write some Text
     font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(result,'Radius of Curvature: Left {0:.2f}m, Right {1:.2f}m'.format(left_curverad_m, right_curverad_m),(200,50), font, 1,(255,255,255),2)
-    plt.figure(figsize=(10, 10))
-    plt.imshow(result)
+    cv2.putText(result,'Mean Radius of Curvature: {0:.2f}m'.format(mean_curve_m),(350,50), font, 1,(255,255,255),2)
+    cv2.putText(result,' Lateral Offset Rel. Center {0:.2f}m'.format(lat_off_rel_ctr),(360,100), font, 1,(255,255,255),2)
     
-
-        
-                
-
-visualize = False
-# Make a list of test images
-images = glob.glob('test_images/straight*.jpg')
-
-for img_count, fname in enumerate(images):
-    img                                 = mpimg.imread(fname)
+    if visualize == True:
+        plt.figure(figsize=(10, 10))
+        plt.imshow(result)
+    
+def pipeline(img):
+    visualize_preproc_steps = False
+    
     undistort_img                       = undistort_image(img, False)
     color_binary                        = extract_hls_features(undistort_img, False)
     thresh_binary                       = get_thresholded_img(undistort_img, False)
@@ -442,16 +451,16 @@ for img_count, fname in enumerate(images):
     combined                            = np.zeros_like(thresh_binary)
     combined[(color_binary == 1) | (thresh_binary == 1)] = 1
     
-    corrected_img, M                 = correct_image(combined, False)
+    corrected_img, M                    = correct_image(combined, False)
     left_fit, right_fit, ploty          = find_initial_lanes(corrected_img, False)
     left_fit, right_fit, ploty          = find_next_lanes(corrected_img, left_fit, right_fit, False)
-    left_curverad_m, right_curverad_m   = calc_curvature(left_fit, right_fit, ploty)
+    mean_curve_m, lat_off_rel_ctr       = calc_curvature_offset(left_fit, right_fit, ploty)
     
-    draw_result_raw_image(undistort_img, corrected_img, 
+    draw_result_raw_image(img, corrected_img, 
                           M, left_fit, right_fit, ploty, 
-                          left_curverad_m, right_curverad_m)
+                          mean_curve_m, lat_off_rel_ctr, True)
     
-    if visualize == True:
+    if visualize_preproc_steps == True:
         rows = 1
         cols = 3
         idx = 1
@@ -470,4 +479,13 @@ for img_count, fname in enumerate(images):
         plt.subplot(rows, cols, idx)
         plt.imshow(corrected_img, cmap='gray')
         plt.title('Resulting Corrected Image')
+    
+    
+# Make a list of test images
+images = glob.glob('test_images/*.jpg')
+
+for img_count, fname in enumerate(images):
+    img = mpimg.imread(fname)
+    pipeline(img)
+    
     
