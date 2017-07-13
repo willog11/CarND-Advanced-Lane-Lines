@@ -435,13 +435,14 @@ def draw_result_raw_image(img, binary_img, M, left_fit, right_fit, ploty, mean_c
     # Write some Text
     font = cv2.FONT_HERSHEY_SIMPLEX
     cv2.putText(result,'Mean Radius of Curvature: {0:.2f}m'.format(mean_curve_m),(350,50), font, 1,(255,255,255),2)
-    cv2.putText(result,' Lateral Offset Rel. Center {0:.2f}m'.format(lat_off_rel_ctr),(360,100), font, 1,(255,255,255),2)
+    cv2.putText(result,' Lateral Offset Relative to Center {0:.2f}m'.format(lat_off_rel_ctr),(320,100), font, 1,(255,255,255),2)
     
     if visualize == True:
         plt.figure(figsize=(10, 10))
         plt.imshow(result)
+    return result
     
-def pipeline(img):
+def pipeline(img, first_frame, left_fit, right_fit, ploty):
     visualize_preproc_steps = False
     
     undistort_img                       = undistort_image(img, False)
@@ -452,13 +453,16 @@ def pipeline(img):
     combined[(color_binary == 1) | (thresh_binary == 1)] = 1
     
     corrected_img, M                    = correct_image(combined, False)
-    left_fit, right_fit, ploty          = find_initial_lanes(corrected_img, False)
-    left_fit, right_fit, ploty          = find_next_lanes(corrected_img, left_fit, right_fit, False)
+    if first_frame == True:
+        left_fit, right_fit, ploty          = find_initial_lanes(corrected_img, False)
+    else:
+        left_fit, right_fit, ploty          = find_next_lanes(corrected_img, left_fit, right_fit, False)
+        
     mean_curve_m, lat_off_rel_ctr       = calc_curvature_offset(left_fit, right_fit, ploty)
     
-    draw_result_raw_image(img, corrected_img, 
-                          M, left_fit, right_fit, ploty, 
-                          mean_curve_m, lat_off_rel_ctr, True)
+    result_image                        = draw_result_raw_image(img, corrected_img, 
+                                                                M, left_fit, right_fit, ploty, 
+                                                                mean_curve_m, lat_off_rel_ctr, False)
     
     if visualize_preproc_steps == True:
         rows = 1
@@ -479,13 +483,55 @@ def pipeline(img):
         plt.subplot(rows, cols, idx)
         plt.imshow(corrected_img, cmap='gray')
         plt.title('Resulting Corrected Image')
+        
+    
+    return result_image, left_fit, right_fit, ploty
     
     
-# Make a list of test images
-images = glob.glob('test_images/*.jpg')
+# Make a list of test imagesq
+test_video=False
 
-for img_count, fname in enumerate(images):
-    img = mpimg.imread(fname)
-    pipeline(img)
+if test_video == True:
+    left_fit = 0
+    right_fit = 0
+    ploty = 0
+    first_frame = True
+    
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter('output.avi',-1, 20.0, (1280,720))
+    cap = cv2.VideoCapture('project_video.mp4')
+    
+    while(cap.isOpened()):
+        ret, frame = cap.read()
+        
+        if ret == True:
+            result, left_fit, right_fit, ploty = pipeline(frame, first_frame, left_fit, right_fit, ploty)
+            out.write(result)
+            
+            cv2.imshow('Result',result)
+            first_frame = False
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            print("Video not found")
+            break;
+    
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
+    
+else:
+    images = glob.glob('test_images/*.jpg')
+    left_fit = 0
+    right_fit = 0
+    ploty = 0
+    for img_count, fname in enumerate(images):
+        img = mpimg.imread(fname)
+        result, left_fit, right_fit, plotyq = pipeline(img, True, left_fit, right_fit, ploty)
+        result = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
+        cv2.imshow('Result',result)
+        cv2.waitKey(-1)
+        cv2.destroyAllWindows()
     
     
