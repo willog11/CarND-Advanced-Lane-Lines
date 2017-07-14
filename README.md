@@ -443,6 +443,7 @@ Additionally it can also be found [here][video1]
 It is very clear even before testing on the extra videos what the fallbacks\issues with this architecture are:
 
 * Tar seams and cracks will be very problematic and need to be handled in a targeted manner. This is a known issue of any lane detection system.
+	* Potential ways to handle this are further preprocessing of the image, looking at rising and falling edges and analysing these in detail
 * The detected lines should be coupled and assumed to be mostly parallel with the exceptions of entry\exits. This will stablize further the detection.
 * Tracking can be implemented to further improve on performance
 * Scenes with extreme curvature and effects from hill such as pitch\roll of the vehilce will severely impact on the performance of the algorithm

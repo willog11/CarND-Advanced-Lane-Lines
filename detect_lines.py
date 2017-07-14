@@ -446,7 +446,7 @@ def pipeline(img, first_frame, left_fit, right_fit, ploty):
     
     undistort_img                       = undistort_image(img, False)
     color_binary                        = extract_hls_features(undistort_img, False)
-    thresh_binary                       = get_thresholded_img(undistort_img, True)
+    thresh_binary                       = get_thresholded_img(undistort_img, False)
     
     combined                            = np.zeros_like(thresh_binary)
     combined[(color_binary == 1) | (thresh_binary == 1)] = 1
@@ -459,7 +459,7 @@ def pipeline(img, first_frame, left_fit, right_fit, ploty):
         
     mean_curve_m, lat_off_rel_ctr       = calc_curvature_offset(left_fit, right_fit, ploty)
     
-    result_image                        = draw_result_raw_image(img, corrected_img, 
+    result_image                        = draw_result_raw_image(undistort_img, corrected_img, 
                                                                 M, left_fit, right_fit, ploty, 
                                                                 mean_curve_m, lat_off_rel_ctr, False)
     
