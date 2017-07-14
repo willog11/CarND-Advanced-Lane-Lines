@@ -19,6 +19,9 @@ The goals / steps of this project are the following:
 [image4]: ./output_images/raw_binary_image.jpg "Final thresholded image"
 [image5]: ./output_images/color_extraction_image.jpg "Colour extraction stages"
 [image6]: ./output_images/thresholded_image.jpg "Combined thresholded image"
+[image7]: ./output_images/corrected_image_0.jpg "Corrected raw image"
+[image8]: ./output_images/corrected_binary_image.jpg "Corrected binary image"
+[image9]: ./output_images/thresholded_image.jpg "Combined thresholded image"
 [video1]: ./project_video.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
@@ -254,33 +257,54 @@ The result of the following process can be found below:
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+The image correction was performed in the *correct_image(..)*, a source image array was defined on straight lane markings on the raw image in the dataset provided. This was then transformed to a selected destination location where the lines will be corrected straight using the following code:
 
-```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
-```
+~~~
+def pipeline(img, first_frame, left_fit, right_fit, ploty):
+	...
+	corrected_img, M                    = correct_image(combined, False)
+
+def correct_image(img, visualize=False):
+            
+    # Creating mask area
+    ROI_TOP_LEFT_X = 575
+    ROI_TOP_RIGHT_X = 570
+    ROI_BOTTOM_LEFT_X = 255
+    ROI_BOTTOM_RIGHT_X = 220
+    ROI_TOP_Y = 460
+    ROI_BOTTOM_Y = 50
+    imshape = img.shape
+
+    src = np.float32([(ROI_BOTTOM_LEFT_X,imshape[0]-ROI_BOTTOM_Y),
+                      (ROI_TOP_LEFT_X, ROI_TOP_Y), 
+                      (imshape[1]-ROI_TOP_RIGHT_X, ROI_TOP_Y), 
+                      (imshape[1]-ROI_BOTTOM_RIGHT_X,imshape[0]-ROI_BOTTOM_Y)])
+    
+    offset = 250
+    img_size = (imshape[1],imshape[0])
+    
+    dst = np.float32([[offset, imshape[0]],
+                      [offset, 0], 
+                      [imshape[1]-offset, 0], 
+                      [imshape[1]-offset, imshape[0]]])
+    M = cv2.getPerspectiveTransform(src, dst)
+    corrected_img = cv2.warpPerspective(img, M, img_size, flags=cv2.INTER_LINEAR)
+~~~
 
 This resulted in the following source and destination points:
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+| 255, 670      | 250, 720        | 
+| 575, 460      | 250, 0      |
+| 710, 460     | 1030, 0      |
+| 1060, 670      | 1030, 720        |
 
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
+The following resulting images confirms that the correction was good (top image is original before binarization and the bottom is the resulting combined image):
 
-![alt text][image4]
+![alt text][image7]
+
+![alt text][image8]
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
