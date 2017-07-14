@@ -432,9 +432,8 @@ The video below shows the resulting performance
 
 [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/oVCqbDjqMpA/0.jpg)](http://www.youtube.com/watch?v=oVCqbDjqMpA)
 
-Additionally it can be found:
+Additionally it can also be found [here][video1]
 
-[here][video1]
 ---
 
 ### Discussion
