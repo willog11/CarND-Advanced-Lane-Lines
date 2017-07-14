@@ -237,12 +237,10 @@ def find_initial_lanes(img, visualize=False):
     
     # Set minimum number of pixels found to recenter window
     minpix = 80
-    maxpix = 8000
     
     # Find the peak of the left and right halves of the histogram
     # These will be the starting point for the left and right lines
     midpoint = np.int(histogram.shape[0]/2)
-    histogram = [numpix for numpix in histogram if numpix <= maxpix]
     leftx_base = np.argmax(histogram[:midpoint])
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint
     
@@ -280,11 +278,11 @@ def find_initial_lanes(img, visualize=False):
         good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & (nonzerox >= win_xright_low) & (nonzerox < win_xright_high)).nonzero()[0]
         
         # If you found > minpix pixels, recenter next window on their mean position
-        if len(good_left_inds) > minpix and len(good_left_inds) < maxpix:
+        if len(good_left_inds) > minpix:
             # Append these indices to the lists
             left_lane_inds.append(good_left_inds)
             leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
-        if len(good_right_inds) > minpix and len(good_right_inds) < maxpix:
+        if len(good_right_inds) > minpix:
             right_lane_inds.append(good_right_inds)
             rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
     
@@ -379,14 +377,9 @@ def find_next_lanes(img, left_fit, right_fit, visualize=False):
 
 def calc_curvature_offset(left_fit, right_fit, ploty):
     
-    # Define y-value where we want radius of curvature
-    # I'll choose the maximum y-value, corresponding to the bottom of the image
     left_fit = np.asarray(left_fit)
     y_eval = np.max(ploty)
-    #left_curverad = ((1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
-    #right_curverad = ((1 + (2*right_fit[0]*y_eval + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
-    #print(left_curverad, 'm', right_curverad, 'm')
-   
+
     # Define conversions in x and y from pixels space to meters
     ym_per_pix = 30/720 # meters per pixel in y dimension
     xm_per_pix = 3.7/700 # meters per pixel in x dimension
@@ -396,14 +389,12 @@ def calc_curvature_offset(left_fit, right_fit, ploty):
     right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
     left_fit_cr = np.polyfit(ploty*ym_per_pix, left_fitx*xm_per_pix, 2)
     right_fit_cr = np.polyfit(ploty*ym_per_pix, right_fitx*xm_per_pix, 2)
-    
-    #print("Min: "+str(np.min(right_fitx)*xm_per_pix))
-    #print("Max: "+str(np.max(right_fitx)*xm_per_pix))
+
     # Calculate the new radii of curvature
     left_curverad_m = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
     right_curverad_m = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
-    # Now our radius of curvature is in meters
 
+    ## Calculate the mean curvature and lateral offset relative to center of vehicle
     curve_mean = ((left_curverad_m + right_curverad_m) / 2)
         
     img_width = 1280
@@ -462,7 +453,7 @@ def pipeline(img, first_frame, left_fit, right_fit, ploty):
     
     corrected_img, M                    = correct_image(combined, False)
     if first_frame == True:
-        left_fit, right_fit, ploty          = find_initial_lanes(corrected_img, True)
+        left_fit, right_fit, ploty          = find_initial_lanes(corrected_img, False)
     else:
         left_fit, right_fit, ploty          = find_next_lanes(corrected_img, left_fit, right_fit, False)
         
@@ -497,7 +488,7 @@ def pipeline(img, first_frame, left_fit, right_fit, ploty):
     
     
 # Make a list of test imagesq
-test_video=False
+test_video=True
 
 if test_video == True:
     left_fit = 0
@@ -506,7 +497,7 @@ if test_video == True:
     first_frame = True
     
     # Define the codec and create VideoWriter object
-    vid_name = 'challenge_video'
+    vid_name = 'project_video'
     
     output_path = vid_name+'_result.avi'
     if (os.path.isfile(output_path)):
@@ -538,7 +529,7 @@ if test_video == True:
     cv2.destroyAllWindows()
     
 else:
-    images = glob.glob('test_images/chall*1.jpg')
+    images = glob.glob('test_images/test*1.jpg')
     left_fit = 0
     right_fit = 0
     ploty = 0

@@ -21,8 +21,10 @@ The goals / steps of this project are the following:
 [image6]: ./output_images/thresholded_image.jpg "Combined thresholded image"
 [image7]: ./output_images/corrected_image_0.jpg "Corrected raw image"
 [image8]: ./output_images/corrected_binary_image.jpg "Corrected binary image"
-[image9]: ./output_images/thresholded_image.jpg "Combined thresholded image"
-[video1]: ./project_video.mp4 "Video"
+[image9]: ./output_images/histogram_of_points.jpg "Histogram of points"
+[image10]: ./output_images/lanes_found.jpg "Lines found"
+[image11]: ./output_images/final_test_image.jpg "Final resulting image"
+[video1]: ./project_video_result.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -308,19 +310,117 @@ The following resulting images confirms that the correction was good (top image 
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+The find lines functionality is broke into 2 parts. The first of which looks for initial lines and the second part looks for the next set of line based on the previous  frame. 
 
-![alt text][image5]
+~~~
+def pipeline(img, first_frame, left_fit, right_fit, ploty):
+...
+
+	if first_frame == True:
+        left_fit, right_fit, ploty          = find_initial_lanes(corrected_img, True)
+    else:
+        left_fit, right_fit, ploty          = find_next_lanes(corrected_img, left_fit, right_fit, False)
+~~~
+
+The logic of this is based upon the material provided in the lessons. A breakdown of which can be found below.
+
+For *find_initial_lanes(...)* the following logic was followed:
+
+1. A histogram of all pixels is taken of the bottom half of the image and split into left and right sides
+2. A sliding window is created to find areas of points and is then passed over the entire image starting  from the bottom
+3. Areas which have points (non zero pixels) are then added to a list
+4. These areas are then checked to ensure the number of points found falls greater than the minimum amount required
+5. Finally a second order polyline fit is created to represent f(y). This is used rather than f(x) as there could be multiple potential values for y for any single value of x
+6. This polyline fit is then used later for drawing of lines
+
+In the following images can be found the histogram of points (top) and resulting line detections (bottom):
+
+![alt text][image9]
+
+![alt text][image10]
+
+In the next frames the line locations will already be known thus the previous polynomials are used as a starting point with a search window applied to find the current set of lines. The rest of the functionality remains the same.
+
+~~~
+def find_next_lanes(img, left_fit, right_fit, visualize=False):
+	margin = 50
+    left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] - margin)) & (nonzerox < (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] + margin))) 
+    right_lane_inds = ((nonzerox > (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] - margin)) & (nonzerox < (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] + margin)))  
+~~~
+
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+Now that the lines were found, the curvature and lateral offset relative to center can be found.
+
+~~~
+def pipeline(img, first_frame, left_fit, right_fit, ploty):
+	...
+	mean_curve_m, lat_off_rel_ctr       = calc_curvature_offset(left_fit, right_fit, ploty)
+~~~
+
+The logic is very straight forward as there are many tutorials present to learn how to calculate the radius of curvature, such as [here](http://www.intmath.com/applications-differentiation/8-radius-curvature.php)
+
+From here the mean curvature between both lines and lateral offset relative to center was calculated.
+
+~~~
+def calc_curvature_offset(left_fit, right_fit, ploty):
+	## Calculate the mean curvature and lateral offset relative to center of vehicle
+    curve_mean = ((left_curverad_m + right_curverad_m) / 2)
+        
+    img_width = 1280
+    center_img_m = (img_width/2 + 0.5) * xm_per_pix
+    
+    left_lane_m = np.max(left_fitx)* xm_per_pix
+    right_lane_m = np.max(right_fitx)*xm_per_pix
+    lane_midpt   = (left_lane_m + right_lane_m) / 2
+    veh_pos_rel_center = lane_midpt - center_img_m
+	
+	return curve_mean, veh_pos_rel_center
+~~~
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+Finally the resulting line detection, curvature and lateral offset need to be redrawn back to the original image. The inverse of the perspective transform matrix is applied to the corrected image after the lanes are drawn. After which the information of curvature and lateral offset is drawn to the top of the frame.
 
-![alt text][image6]
+~~~
+def pipeline(img, first_frame, left_fit, right_fit, ploty):
+	...
+	result_image                        = draw_result_raw_image(img, corrected_img, 
+                                                                M, left_fit, right_fit, ploty, 
+                                                                mean_curve_m, lat_off_rel_ctr, False)
+																
+def draw_result_raw_image(img, binary_img, M, left_fit, right_fit, ploty, mean_curve_m, lat_off_rel_ctr, visualize=False):
+    
+    Minv = np.linalg.inv(M)
+    left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
+    right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
+    
+    # Create an image to draw the lines on
+    warp_zero = np.zeros_like(binary_img).astype(np.uint8)
+    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+    
+    # Recast the x and y points into usable format for cv2.fillPoly()
+    pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+    pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+    pts = np.hstack((pts_left, pts_right))
+    
+    # Draw the lane onto the warped blank image
+    cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
+    
+    # Warp the blank back to original image space using inverse perspective matrix (Minv)
+    newwarp = cv2.warpPerspective(color_warp, Minv, (img.shape[1], img.shape[0])) 
+    # Combine the result with the original image
+    result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
+    # Write some Text
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(result,'Mean Radius of Curvature: {0:.2f}m'.format(mean_curve_m),(350,50), font, 1,(255,255,255),2)
+    cv2.putText(result,' Lateral Offset Relative to Center {0:.2f}m'.format(lat_off_rel_ctr),(320,100), font, 1,(255,255,255),2)
+~~~
+
+This results in the following image:
+
+![alt text][image11]
 
 ---
 
@@ -328,8 +428,8 @@ I implemented this step in lines # through # in my code in `yet_another_file.py`
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
-
+The following link is the target video for the project to be tested upon
+![alt text][video1]
 ---
 
 ### Discussion
