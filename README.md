@@ -430,7 +430,7 @@ This results in the following image:
 
 The video below shows the resulting performance
 
-[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/oVCqbDjqMpA/0.jpg)](http://www.youtube.com/watch?v=oVCqbDjqMpA)
+[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/6fwWruo6GTk/0.jpg)](http://www.youtube.com/watch?v=6fwWruo6GTk)
 
 Additionally it can also be found [here][video1]
 
