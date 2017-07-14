@@ -428,10 +428,13 @@ This results in the following image:
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-The following link is the target video for the project to be tested upon
+The video below shows the resulting performance
 
-[Demo Video][video1]
+[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/oVCqbDjqMpA/0.jpg)](http://www.youtube.com/watch?v=oVCqbDjqMpA)
 
+Additionally it can be found:
+
+[here][video1]
 ---
 
 ### Discussion
