@@ -16,9 +16,9 @@ The goals / steps of this project are the following:
 [image1]: ./output_images/corners.jpg "Corners"
 [image2]: ./output_images/undistored_image.jpg "Undistorted image"
 [image3]: ./output_images/road_image_undistorted.jpg "Undistorted road image"
-[image4]: ./output_images/warped_straight_lines.jpg "Warp Example"
-[image5]: ./output_images/color_fit_lines.jpg "Fit Visual"
-[image6]: ./output_images/example_output.jpg "Output"
+[image4]: ./output_images/raw_binary_image.jpg "Final thresholded image"
+[image5]: ./output_images/color_extraction_image.jpg "Colour extraction stages"
+[image6]: ./output_images/thresholded_image.jpg "Combined thresholded image"
 [video1]: ./project_video.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
@@ -61,6 +61,7 @@ if ret == True:
 ~~~
 
 The following is the resultant image:
+
 ![alt text][image1]
 
 
@@ -89,31 +90,167 @@ pickle.dump( cam_pickle, open( "cam_pickle.p", "wb" ) )
 ~~~
 
 The following is the resultant image:
+
 ![alt text][image2]
 
 ### Pipeline (single images)
 
+The code implemented to detect the lanes of the image and all supporting functionality can be found in detect_lines.py
+
 #### 1. Provide an example of a distortion-corrected image.
 
-This step is very similar to above. However first the calibration must be read back using pickle and the undistortion applied to the new image set
+This step is very similar to above. However first the calibration must be read back using pickle and the undistortion function is to be applied to the new image set
 
 ~~~
-# Read in the saved camera matrix and distortion coefficients
-cam_pickle = pickle.load( open( "cam_pickle.p", "rb" ) )
-mtx = cam_pickle["mtx"]
-dist = cam_pickle["dist"]
+def pipeline(img, first_frame, left_fit, right_fit, ploty):
+    visualize_preproc_steps = False
+    
+    undistort_img                       = undistort_image(img, False)
+	
+def undistort_image(img, visualize=False):
+	# Read in the saved camera matrix and distortion coefficients
+	cam_pickle = pickle.load( open( "cam_pickle.p", "rb" ) )
+	mtx = cam_pickle["mtx"]
+	dist = cam_pickle["dist"]
 
-undistort_img = cv2.undistort(img, mtx, dist, None, mtx)
+	undistort_img = cv2.undistort(img, mtx, dist, None, mtx)
 ~~~
 
 The resulting images show a slight image distortion correction. The resulting undistorted image will be used for further processing to find the lanes.
+
 ![alt text][image3]
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+I used a combination of color and gradient thresholds to generate a binary image. This process was broken down into the following steps:
 
-![alt text][image3]
+1. Use of HLS colour space to binarize images to show yellow and white lanes only
+2. Using various image thresholding techniques, only show lane markings
+3. Combine the resulting data to give the final filtered image
+
+~~~
+def pipeline(img, first_frame, left_fit, right_fit, ploty):
+
+	.....
+	
+	color_binary                        = extract_hls_features(undistort_img, False)
+	thresh_binary                       = get_thresholded_img(undistort_img, True)
+
+	combined                            = np.zeros_like(thresh_binary)
+	combined[(color_binary == 1) | (thresh_binary == 1)] = 1
+~~~
+
+This results in the following raw image:
+
+![alt text][image4]
+
+**Usage of HLS color space**
+
+HLS is used to give only yellow and white lines as grayscale is known to perform very poor on yellow lines and areas of bright sun and concrete.  Thus the following logic was implemented:
+
+1. Convert the image to HLS
+2. Find the white colours on the HLS image by thresholding the L colour space
+3. Find the yellow colours on the HLS image by thresholding the H and S colour space
+4. Finally combine the above steps to give a resulting binary image
+
+~~~
+def white_color_enhance(img):
+    lower = np.uint8([  0, 200,   0])
+    upper = np.uint8([255, 255, 255])
+    white_mask = cv2.inRange(img, lower, upper)
+    return  white_mask
+
+def yellow_color_enhance(img):
+    lower = np.uint8([  10, 0, 100])
+    upper = np.uint8([40, 255, 255])
+    yellow_mask = cv2.inRange(img, lower, upper)
+    return yellow_mask
+
+def white_yellow_enhance(img, white_mask, yellow_mask):
+    overall_mask = cv2.bitwise_or(white_mask, yellow_mask)
+    return overall_mask
+
+def extract_hls_features(img, visualize=False):
+    """Applies the HSL transform"""
+    hls_image = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
+    white_mask = white_color_enhance(hls_image)
+    yellow_mask = yellow_color_enhance(hls_image)
+    overall_mask = white_yellow_enhance(hls_image, white_mask, yellow_mask)
+    overall_mask[(overall_mask == 255)] = 1
+~~~
+
+![alt text][image5]
+
+**Image thresholding techniques**
+
+Various image thresholding techniques were applied to filter out everything in the image but lines. It was a simple 4 stage process:
+
+1. Convert the frame to grayscale
+2. Apply gradient thresholding to find edges
+3. Apply magnitude thresholding to give only areas of strong intensity
+4. Apply directional threholding to find point segments in a particular direction
+5. Finally combine all 3 previous steps to create a binarized image
+
+~~~
+def get_thresholded_img(img, visualize=False):
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    grad_binary = grad_threshold(gray, orient='x', thresh_min=20, thresh_max=100)
+    mag_binary = mag_threshold(gray, sobel_kernel=3, mag_thresh=(30, 100))
+    dir_binary = dir_threshold(gray, sobel_kernel=11, thresh=(0.7, 1.3))
+    
+    combined = np.zeros_like(dir_binary)
+    combined[(grad_binary==1) | ((mag_binary == 1) & (dir_binary == 1))] = 1
+	
+
+def grad_threshold(img, orient='x', thresh_min=0, thresh_max=255):
+
+    # Apply x or y gradient with the OpenCV Sobel() function and take the absolute value
+    if orient == 'x':
+        abs_sobel = np.absolute(cv2.Sobel(img, cv2.CV_64F, 1, 0))
+    if orient == 'y':
+        abs_sobel = np.absolute(cv2.Sobel(img, cv2.CV_64F, 0, 1))
+    # Rescale back to 8 bit integer
+    scaled_sobel = np.uint8(255*abs_sobel/np.max(abs_sobel))
+    # Create a copy and apply the threshold
+    binary_output = np.zeros_like(scaled_sobel)
+    # Here I'm using inclusive (>=, <=) thresholds, but exclusive is ok too
+    binary_output[(scaled_sobel >= thresh_min) & (scaled_sobel <= thresh_max)] = 1
+
+    # Return the result
+    return binary_output
+
+def mag_threshold(img, sobel_kernel=3, mag_thresh=(0, 255)):
+    
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
+
+    mag = np.sqrt(sobelx**2 + sobely**2)
+    scaled_sobel = np.uint8(255*mag/np.max(mag))
+
+    binary_output = np.zeros_like(scaled_sobel)
+    binary_output[(scaled_sobel >= mag_thresh[0]) & (scaled_sobel <= mag_thresh[1])] = 1
+
+    return binary_output
+
+def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
+    
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
+
+    abs_sobelx = np.absolute(sobelx)
+    abs_sobely = np.absolute(sobely)
+
+    dir_grad = np.arctan2(abs_sobely, abs_sobelx)
+    binary_output = np.zeros_like(img)
+    binary_output[(dir_grad >= thresh[0]) & (dir_grad <= thresh[1])] = 1
+
+    return binary_output
+~~~
+
+The result of the following process can be found below:
+
+![alt text][image6]
+
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
