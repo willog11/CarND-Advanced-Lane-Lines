@@ -24,7 +24,7 @@ The goals / steps of this project are the following:
 [image9]: ./output_images/histogram_of_points.jpg "Histogram of points"
 [image10]: ./output_images/lanes_found.jpg "Lines found"
 [image11]: ./output_images/final_test_image.jpg "Final resulting image"
-[video1]: ./project_video_result.mp4 "Video"
+[video1]: ./project_video_result.avi "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -429,11 +429,20 @@ This results in the following image:
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
 The following link is the target video for the project to be tested upon
-![alt text][video1]
+
+[Demo Video][video1]
+
 ---
 
 ### Discussion
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+It is very clear even before testing on the extra videos what the fallbacks\issues with this architecture are:
+
+* Tar seams and cracks will be very problematic and need to be handled in a targeted manner. This is a known issue of any lane detection system.
+* The detected lines should be coupled and assumed to be mostly parallel with the exceptions of entry\exits. This will stablize further the detection.
+* Tracking can be implemented to further improve on performance
+* Scenes with extreme curvature and effects from hill such as pitch\roll of the vehilce will severely impact on the performance of the algorithm
+
+Lane detection\sensing is a huge area where teams of engineers can spend years implementing a robust algorithm. For the purpose of this project I kept the implementation simple and clear to follow to show what is possible with not too many lines of code. This was a very interesting project as it brings in many aspects imaging and computer vision, from calculating the intrinsic calibration to applying many computer vision techniques to create a good lane detection algorithm.
