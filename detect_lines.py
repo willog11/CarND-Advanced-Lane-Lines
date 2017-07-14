@@ -453,7 +453,7 @@ def pipeline(img, first_frame, left_fit, right_fit, ploty):
     
     corrected_img, M                    = correct_image(combined, False)
     if first_frame == True:
-        left_fit, right_fit, ploty          = find_initial_lanes(corrected_img, False)
+        left_fit, right_fit, ploty          = find_initial_lanes(corrected_img, True)
     else:
         left_fit, right_fit, ploty          = find_next_lanes(corrected_img, left_fit, right_fit, False)
         
@@ -488,7 +488,7 @@ def pipeline(img, first_frame, left_fit, right_fit, ploty):
     
     
 # Make a list of test imagesq
-test_video=True
+test_video=False
 
 if test_video == True:
     left_fit = 0
