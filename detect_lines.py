@@ -398,10 +398,12 @@ def calc_curvature_offset(left_fit, right_fit, ploty):
     curve_mean = ((left_curverad_m + right_curverad_m) / 2)
         
     img_width = 1280
-    center_img_m = (img_width/2 + 0.5) * xm_per_pix
+    img_height = 720
+    center_img_m = img_width/2 * xm_per_pix
     
-    left_lane_m = np.max(left_fitx)* xm_per_pix
-    right_lane_m = np.max(right_fitx)*xm_per_pix
+    # Get the lane width at the points closest to the vehicle (bottom of corrected image)
+    left_lane_m = left_fitx[img_height - 1]* xm_per_pix
+    right_lane_m = right_fitx[img_height - 1]*xm_per_pix
     lane_midpt   = (left_lane_m + right_lane_m) / 2
     veh_pos_rel_center = lane_midpt - center_img_m
 
