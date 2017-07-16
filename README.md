@@ -365,18 +365,23 @@ From here the mean curvature between both lines and lateral offset relative to c
 
 ~~~
 def calc_curvature_offset(left_fit, right_fit, ploty):
+	
+	...
+	
 	## Calculate the mean curvature and lateral offset relative to center of vehicle
     curve_mean = ((left_curverad_m + right_curverad_m) / 2)
         
     img_width = 1280
-    center_img_m = (img_width/2 + 0.5) * xm_per_pix
+    img_height = 720
+    center_img_m = img_width/2 * xm_per_pix
     
-    left_lane_m = np.max(left_fitx)* xm_per_pix
-    right_lane_m = np.max(right_fitx)*xm_per_pix
+    # Get the lane width at the points closest to the vehicle (bottom of corrected image)
+    left_lane_m = left_fitx[img_height - 1]* xm_per_pix
+    right_lane_m = right_fitx[img_height - 1]*xm_per_pix
     lane_midpt   = (left_lane_m + right_lane_m) / 2
     veh_pos_rel_center = lane_midpt - center_img_m
-	
-	return curve_mean, veh_pos_rel_center
+
+    return curve_mean, veh_pos_rel_center
 ~~~
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
@@ -430,7 +435,7 @@ This results in the following image:
 
 The video below shows the resulting performance
 
-[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/6fwWruo6GTk/0.jpg)](http://www.youtube.com/watch?v=6fwWruo6GTk)
+[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/OcT6UB2wvno/0.jpg)](http://www.youtube.com/watch?v=OcT6UB2wvno)
 
 Additionally it can also be found [here][video1]
 
